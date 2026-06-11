@@ -28,7 +28,8 @@ def send_map(chat_id, cities, caption):
         image_path = Path(temp_file.name)
 
     try:
-        if not manager.create_graph(image_path, cities):
+        marker_color = manager.get_marker_color(chat_id)
+        if not manager.create_graph(image_path, cities, marker_color=marker_color):
             return False
 
         with image_path.open("rb") as image_file:
@@ -40,9 +41,11 @@ def send_map(chat_id, cities, caption):
 
 @bot.message_handler(commands=["start"])
 def handle_start(message):
+    current_color = manager.get_marker_color(message.chat.id)
     bot.send_message(
         message.chat.id,
         "Hello. I can show cities on the map.\n"
+        f"Your current marker color is {current_color}.\n"
         "Use /help to see the available commands.",
     )
 
@@ -54,9 +57,44 @@ def handle_help(message):
         "Available commands:\n"
         "/start - start the bot\n"
         "/help - show all commands\n"
+        "/show_colors - show available marker colors\n"
+        "/set_marker_color <color> - choose your marker color\n"
         "/show_city <city name> - show one city on the map\n"
         "/remember_city <city name> - save a city to your list\n"
         "/show_my_cities - show all saved cities on one map",
+    )
+
+
+@bot.message_handler(commands=["show_colors"])
+def handle_show_colors(message):
+    colors = ", ".join(manager.get_available_colors())
+    current_color = manager.get_marker_color(message.chat.id)
+    bot.send_message(
+        message.chat.id,
+        f"Available marker colors: {colors}\nCurrent color: {current_color}",
+    )
+
+
+@bot.message_handler(commands=["set_marker_color"])
+def handle_set_marker_color(message):
+    color_name = extract_city_name(message.text)
+    if not color_name:
+        bot.send_message(
+            message.chat.id,
+            "Write the command like this: /set_marker_color blue",
+        )
+        return
+
+    if manager.set_marker_color(message.chat.id, color_name):
+        bot.send_message(
+            message.chat.id,
+            f"Marker color changed to {color_name.strip().lower()}.",
+        )
+        return
+
+    bot.send_message(
+        message.chat.id,
+        "Unknown color. Use /show_colors to see the available options.",
     )
 
 
@@ -111,7 +149,8 @@ def handle_show_visited_cities(message):
         )
         return
 
-    caption = "Your saved cities:\n" + ", ".join(cities)
+    current_color = manager.get_marker_color(message.chat.id)
+    caption = f"Your saved cities ({current_color} markers):\n" + ", ".join(cities)
     send_map(message.chat.id, cities, caption)
 
 
