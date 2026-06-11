@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+map_*.png
+sample_map.png
